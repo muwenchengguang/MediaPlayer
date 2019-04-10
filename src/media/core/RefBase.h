@@ -19,12 +19,16 @@ public:
 private:
     template<typename T> friend class sp;
     void addRef() {
-        AutoLock l(lock_);
-        refCount_++;
+    	{
+			AutoLock l(lock_);
+			refCount_++;
+    	}
     }
     void decRef() {
-        AutoLock l(lock_);
-        refCount_--;
+    	{
+			AutoLock l(lock_);
+			refCount_--;
+    	}
         //LOGI("ref obj %p ref count = %d", this, refCount_);
         if (refCount_ <= 0) {
             delete this;

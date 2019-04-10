@@ -31,53 +31,56 @@ int MPEG4Source::stop () {
 
 int MPEG4Source::read (MediaBuffer **buffer) {
     *buffer = NULL;
+
     if (!mTrack->isVideo()) return ERROR_END_OF_STREAM;
     if (mSampleIndex >= mSampleCount) return ERROR_END_OF_STREAM;
 
     off64_t offset;
     uint64_t size;
     int ret = 0;
+    int dataOffset = 0;
     uint8_t startCode[4] = {0x00, 0x00, 0x00, 0x01};
 
-    if (mSampleIndex == 1 && !mConfigDataRead) {
+    LOGI("read sample %d", mSampleIndex);
+	ret = mTrack->findSample(mSampleIndex, &offset, &size);
+	if (ret < 0) return ret;
+
+    if (mSampleIndex == 0) {
         convertAVCC();
-        sp<MediaBuffer> sps;
-        sp<MediaBuffer> pps;
+        sp<MediaBuffer> sps = NULL;
+        sp<MediaBuffer> pps = NULL;
         ret = mCodecDataMeta->findData(kKeySPS, sps);
         ret = mCodecDataMeta->findData(kKeyPPS, pps);
         if (sps.get() != NULL && pps.get() != NULL) {
             LOGI("read sps/pps");
-            *buffer = new MediaBuffer(sps->size() + pps->size());
+            *buffer = new MediaBuffer(sps->size() + pps->size() + size);
             memcpy((*buffer)->data(), sps->data(), sps->size());
             memcpy((*buffer)->data() + sps->size(), pps->data(), pps->size());
-            (*buffer)->setRange(0, sps->size() + pps->size());
+            dataOffset = sps->size() + pps->size();
         }
-        mConfigDataRead = true;
-        return ret;
     } else {
-        ret = mTrack->findSample(mSampleIndex, &offset, &size);
-        if (ret < 0) return ret;
         *buffer = new MediaBuffer(size);
     }
-    ssize_t reads = mDataSource->readAt(offset, (*buffer)->data(), size);
+    ssize_t reads = mDataSource->readAt(offset, (*buffer)->data() + dataOffset, size);
     if (reads != size) return ERROR_IO;
     // assemble with NAL unit start code
-    memcpy((*buffer)->data(), startCode, 4);
-    (*buffer)->setRangeOffset(0);
-    (*buffer)->setRangeLength(size);
+    //memcpy((*buffer)->data(), startCode, 4);
+    //(*buffer)->setRangeOffset(0);
+    //(*buffer)->setRangeLength(size);
     mSampleIndex++;
     return ret;
 }
 
-static int copyNALUToABuffer(sp<MediaBuffer> *buffer, const uint8_t *ptr, size_t length) {
+static int copyNALUToABuffer(MediaBuffer **buffer, const uint8_t *ptr, size_t length) {
     if (((*buffer)->size() + 4 + length) > ((*buffer)->capacity() - (*buffer)->offset())) {
-        sp<MediaBuffer> tmpBuffer = new MediaBuffer((*buffer)->size() + 4 + length + 1024);
-        if (tmpBuffer.get() == NULL) {
+    	MediaBuffer* tmpBuffer = new MediaBuffer((*buffer)->size() + 4 + length + 1024);
+        if (tmpBuffer == NULL) {
             return -1;
         }
         memcpy(tmpBuffer->data(), (*buffer)->data(), (*buffer)->size());
         tmpBuffer->setRange(0, (*buffer)->size());
-        (*buffer) = tmpBuffer;
+        delete *buffer;
+        *buffer = tmpBuffer;
     }
 
     memcpy((*buffer)->data() + (*buffer)->size(), "\x00\x00\x00\x01", 4);
@@ -92,7 +95,7 @@ void MPEG4Source::convertAVCC() {
         return;
     }
 
-    sp<MediaBuffer> temp;
+    sp<MediaBuffer> temp = NULL;
     int ret = meta->findData(kKeyAVCC, temp);
     if (ret != 0) {
         return;
@@ -109,7 +112,7 @@ void MPEG4Source::convertAVCC() {
     size_t numSeqParameterSets = ptr[5] & 31;
     ptr += 6;
     size -= 6;
-    sp<MediaBuffer> codecdata;
+    MediaBuffer* codecdata;
     for (size_t i = 0; i < numSeqParameterSets; ++i) {
         if (size < 2) {
             return;

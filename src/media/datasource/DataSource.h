@@ -8,9 +8,8 @@
 #include "RefBase.h"
 #include <list>
 #include <string>
-#include <stdio.h>
-#include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 namespace peng {
 

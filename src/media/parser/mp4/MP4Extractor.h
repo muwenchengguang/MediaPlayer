@@ -8,6 +8,7 @@
 #include "MediaExtractor.h"
 #include "Chunk.h"
 #include "MPEG4Source.h"
+#include <sys/types.h>
 
 namespace peng {
 
@@ -29,6 +30,7 @@ public:
 private:
     //status_t readMetaData();
     int parseChunk(off64_t offset);
+
     void updateTrackList();
     void calc(const sp<Track>& track);
 

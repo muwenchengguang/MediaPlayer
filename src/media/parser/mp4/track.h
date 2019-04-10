@@ -6,6 +6,7 @@
 #define MPLAYER_TRACK_H
 
 #include "SampleTable.h"
+#include "CodecDef.h"
 
 namespace peng {
 
@@ -15,6 +16,7 @@ public:
             : Chunk(source, meta, fourCC, offset, size, depth) {
         if (mMeta.get() == NULL) {
             mMeta = new MetaData();
+            mMeta->setInt32(kKeyMIMEType, Unknown);
         }
     }
     virtual ~Track() {}

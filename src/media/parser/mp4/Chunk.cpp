@@ -226,6 +226,7 @@ private:
             LOGI("AVCC data:%lld", chunk_data_size);
             mMeta->setData(kKeyAVCC, buffer);
         }
+        mMeta->setInt32(kKeyMIMEType, AVC);
 
         return 0;
     }

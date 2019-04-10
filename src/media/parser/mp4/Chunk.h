@@ -38,14 +38,13 @@ private:
     static sp<Chunk> create(const sp <DataSource> &source, const sp <MetaData> &meta, std::string fourCC, off64_t offset, uint64_t size, int depth);
 
 protected:
-    off64_t mOffset;
-    uint64_t mSize;
-    std::string mFourCC;
-    int mDepth;
-    std::list<sp<Chunk> > mChunkList;
     sp<DataSource> mDataSource;
     sp<MetaData> mMeta;
-
+    std::string mFourCC;
+    off64_t mOffset;
+    uint64_t mSize;
+    int mDepth;
+    std::list<sp<Chunk> > mChunkList;
     int mID;
 };
 
