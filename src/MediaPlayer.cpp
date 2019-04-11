@@ -93,44 +93,64 @@ void test_decoder(char* filename) {
 		LOGI("parsed done");
 	}
 	size_t count = extractor->countTracks();
-	    for (size_t i = 0; i < count; ++i) {
-	        sp<MediaSource> track = extractor->getTrack(i);
-	        if (track.get() != NULL) {
-	            int codecType = Unknown;
-	            sp<MetaData> format = track->getFormat();
-	            format->findInt32(kKeyMIMEType, codecType);
-	            MediaBuffer* buffer = NULL;
-	            sp<FFMPEGVideoDecoder> decoder = NULL;
-	            if (codecType == AVC) {
-	            	decoder = new FFMPEGVideoDecoder(codecType);
-	            } else {
-	            	LOGW("ignore unsupported codec");
-	            	continue;
-	            }
-	            int ret;
-	            do {
-	                ret = track->read(&buffer);
-	                if (ret == ERROR_END_OF_STREAM) {
-	                	LOGE("end of stream");
-	                }
+	for (size_t i = 0; i < count; ++i) {
+		sp<MediaSource> track = extractor->getTrack(i);
+		if (track.get() != NULL) {
+			int codecType = Unknown;
+			sp<MetaData> format = track->getFormat();
+			format->findInt32(kKeyMIMEType, codecType);
+			MediaBuffer* buffer = NULL;
+			sp<FFMPEGVideoDecoder> decoder = NULL;
+			if (codecType == AVC) {
+				decoder = new FFMPEGVideoDecoder(codecType, track);
+			} else {
+				LOGW("ignore unsupported codec");
+				continue;
+			}
+			int ret;
+			do {
+				ret = decoder->read(&buffer);
+				if (ret == ERROR_END_OF_STREAM) {
+					LOGE("end of stream");
+				}
+				if (buffer != NULL) {
+					delete buffer;
+					buffer = NULL;
+				}
+			} while (ret >= 0);
+		}
+	}
+}
 
-	                if (buffer != NULL) {
-	                	LOGI("start decode");
-	                	bool got = decoder->decode(buffer->data(), buffer->size());
-	                	LOGI("decode done");
-	                	if (got) {
-	                		LOGI("decoded one frame");
-	                	}
-	                }
-	                if (buffer != NULL) {
-	                	LOGI("delete buffer");
-	                    delete buffer;
-	                    buffer = NULL;
-	                    LOGI("delete buffer done");
-	                }
-	            } while (ret >= 0);
-	        }
-	    }
+void testPlay(char* filename) {
+	DataSource::RegisterDefaultSniffers();
+	FILE* fp = fopen (filename, "rb");
+	if (fp <= 0) {
+		LOGE("open file failed");
+		return;
+	}
+	sp<DataSource> ds = new FileDataSource(fp);
+	sp<MediaExtractor> extractor = MediaExtractor::create(ds, NULL);
+	if (extractor.get() != NULL) {
+		LOGI("parsed done");
+	}
+	size_t count = extractor->countTracks();
+	for (size_t i = 0; i < count; ++i) {
+		sp<MediaSource> track = extractor->getTrack(i);
+		if (track.get() != NULL) {
+			int codecType = Unknown;
+			sp<MetaData> format = track->getFormat();
+			format->findInt32(kKeyMIMEType, codecType);
+			MediaBuffer* buffer = NULL;
+			//sp<FFMPEGVideoDecoder> decoder = NULL;
+			if (codecType == AVC) {
+				//decoder = new FFMPEGVideoDecoder(codecType);
+			} else {
+				LOGW("ignore unsupported codec");
+				continue;
+			}
+		}
+	}
 }
 
 int main(int argc,char *argv[]) {

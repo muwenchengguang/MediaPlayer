@@ -15,6 +15,9 @@ MPEG4Source::MPEG4Source (const sp<DataSource>& source, const sp <Track> &track)
     : mTrack(track), mDataSource(source), mSampleIndex(0), mSampleCount(mTrack->countSamples()) {
     mConfigDataRead = false;
     mCodecDataMeta = new MetaData();
+    mSPSRetrieved = false;
+    mPPSRetrieved = false;
+    mConfigRetrieved = false;
 }
 
 sp<MetaData> MPEG4Source::getFormat () {
@@ -38,35 +41,42 @@ int MPEG4Source::read (MediaBuffer **buffer) {
     off64_t offset;
     uint64_t size;
     int ret = 0;
-    int dataOffset = 0;
     uint8_t startCode[4] = {0x00, 0x00, 0x00, 0x01};
 
-    LOGI("read sample %d", mSampleIndex);
 	ret = mTrack->findSample(mSampleIndex, &offset, &size);
 	if (ret < 0) return ret;
+	int dataSize;
+	int dataOffset = 0;
 
     if (mSampleIndex == 0) {
-        convertAVCC();
+    	convertAVCC();
         sp<MediaBuffer> sps = NULL;
         sp<MediaBuffer> pps = NULL;
         ret = mCodecDataMeta->findData(kKeySPS, sps);
         ret = mCodecDataMeta->findData(kKeyPPS, pps);
         if (sps.get() != NULL && pps.get() != NULL) {
-            LOGI("read sps/pps");
-            *buffer = new MediaBuffer(sps->size() + pps->size() + size);
+            LOGI("read sps/pps, sps size:%d pps size:%d", sps->size(), pps->size());
+            dataSize = sps->size() + pps->size() + size;
+            *buffer = new MediaBuffer(dataSize);
             memcpy((*buffer)->data(), sps->data(), sps->size());
             memcpy((*buffer)->data() + sps->size(), pps->data(), pps->size());
             dataOffset = sps->size() + pps->size();
         }
     } else {
         *buffer = new MediaBuffer(size);
+        dataSize = size;
     }
     ssize_t reads = mDataSource->readAt(offset, (*buffer)->data() + dataOffset, size);
     if (reads != size) return ERROR_IO;
     // assemble with NAL unit start code
-    //memcpy((*buffer)->data(), startCode, 4);
-    //(*buffer)->setRangeOffset(0);
-    //(*buffer)->setRangeLength(size);
+    memcpy((*buffer)->data() + dataOffset, startCode, 4);
+    (*buffer)->setRangeOffset(0);
+    (*buffer)->setRangeLength(dataSize);
+    if (mSampleIndex == 0) {
+    	/*FILE * fp = fopen("dump.264", "wb");
+    	fwrite((*buffer)->data(), (*buffer)->size(), 1, fp);
+    	fclose(fp);*/
+    }
     mSampleIndex++;
     return ret;
 }

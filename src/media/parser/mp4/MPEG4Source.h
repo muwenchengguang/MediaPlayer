@@ -30,6 +30,9 @@ private:
     uint32_t mSampleCount;
     bool mConfigDataRead;
     sp<MetaData> mCodecDataMeta;
+    bool mSPSRetrieved;
+    bool mPPSRetrieved;
+    bool mConfigRetrieved;
 };
 
 }

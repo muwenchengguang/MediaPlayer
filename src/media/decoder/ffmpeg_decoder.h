@@ -8,46 +8,29 @@ extern "C" {
 
 #include "RefBase.h"
 #include "CodecDef.h"
+#include <list>
+#include "MediaSource.h"
+#include "MetaData.h"
 
 
 namespace peng {
 
-class FFMPEGVideoDecoder : public RefBase {
+class FFMPEGVideoDecoder : public MediaSource {
 public:
-    FFMPEGVideoDecoder(int codec);
+    FFMPEGVideoDecoder(int codec, const sp<MediaSource>& source);
     ~FFMPEGVideoDecoder();
-    
-    bool decode(const unsigned char* data, int len);
-    
-    const unsigned char* getBuffer() { return buffer_; }
-    int getWidth() { return width_; }
-    int getHeight() { return height_; }
+    virtual int start(MetaData *params = NULL);
+    virtual int stop();
+    virtual sp<MetaData> getFormat();
+    virtual int read(MediaBuffer **buffer);
     
 protected:
 
 private:
     AVCodec*  decoderCodec_;
     AVCodecContext* decoderContext_;
+    sp<MediaSource> source_;
     AVFrame* decoderFrame_;
-
-    unsigned char buffer_[1280*720*4];
-    int width_;
-    int height_;
-};
-
-
-class FFMpegAudioDecoder
-{
-public:
-    FFMpegAudioDecoder(CodecID codec);
-    ~FFMpegAudioDecoder();
-    bool decode(const unsigned char* buffer, int size, unsigned char* outbuff, int& out_size, int& out_samples);
-
-private:
-    AVCodec* _decoderCodec;
-    AVCodecContext* _decoderContext;
-    AVFrame* _decoderFrame;
-    AVPacket _decoderPacket;
 };
 
 }

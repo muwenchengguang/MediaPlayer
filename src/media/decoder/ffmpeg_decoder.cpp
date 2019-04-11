@@ -3,6 +3,7 @@
 
 #define LOG_TAG "FFMPEGDecoder"
 #include "log.h"
+#include <string.h>
 
 
 namespace peng {
@@ -36,7 +37,7 @@ static void YUV2RGB(unsigned char* pYUV, unsigned char* pRGB) {
     pRGB[3] = 0xff;
 }
 
-void convertYUV2RGB(const unsigned char* yuv, int w, int h, unsigned char* out, int rgb_len) {
+void convertYUV2RGB(const unsigned char* yuv, int w, int h, unsigned char* out) {
     int y_len = w*h;
     int u_len = w*h/4;
     int v_len = u_len;
@@ -69,7 +70,7 @@ void convertYUV2RGB(const unsigned char* y, int y_ls,
                     const unsigned char* u, int u_ls,
                     const unsigned char* v, int v_ls,
                     int w, int h,
-                    unsigned char* out, int rgb_len) {
+                    unsigned char* out) {
     const unsigned char* Y = y;
     const unsigned char* U = u;
     const unsigned char* V = v;
@@ -91,7 +92,7 @@ void convertYUV2RGB(const unsigned char* y, int y_ls,
     }
 }
 
-FFMPEGVideoDecoder::FFMPEGVideoDecoder(int codec): width_(0), height_(0) {
+FFMPEGVideoDecoder::FFMPEGVideoDecoder(int codec, const sp<MediaSource>& source) : source_(source) {
 	LOGI("FFMPEGVideoDecoder constructed");
     avcodec_register_all();
     if (codec == AVC)
@@ -119,79 +120,50 @@ FFMPEGVideoDecoder::~FFMPEGVideoDecoder() {
     LOGI("FFMPEGVideoDecoder desctructed done");
 }
 
-
-bool FFMPEGVideoDecoder::decode(const unsigned char* data, int len) {
-    AVPacket ffpkt;
-    av_init_packet(&ffpkt);
-    ffpkt.data = (uint8_t*)data;
-    ffpkt.size = len;
-
-    int isFinished;
-    avcodec_decode_video2(decoderContext_, decoderFrame_, &isFinished, &ffpkt);
-    if ( !isFinished ) 
-        return false;
-    
-    LOGI("decoded %dx%d", decoderFrame_->width, decoderFrame_->height);
-
-    convertYUV2RGB(decoderFrame_->data[0], decoderFrame_->linesize[0],
-                   decoderFrame_->data[1], decoderFrame_->linesize[1],
-                   decoderFrame_->data[2], decoderFrame_->linesize[2],
-                   decoderFrame_->width, decoderFrame_->height, buffer_, 0);
-    width_ = decoderFrame_->width;
-    height_ = decoderFrame_->height;
-    return true;
+int FFMPEGVideoDecoder::start(MetaData *params) {
+	return 0;
 }
 
-FFMpegAudioDecoder::FFMpegAudioDecoder(CodecID codec)
-{
-    avcodec_register_all();
-    AVCodecID codec_id;
-    if (codec == MPEGA)
-       codec_id = AV_CODEC_ID_MP3;
-    else if (codec == AAC)
-        codec_id = AV_CODEC_ID_AAC;
-    else {
-        assert(false);
-        return;
-    }
-    _decoderCodec = avcodec_find_decoder(codec_id);
-    _decoderContext = avcodec_alloc_context3(_decoderCodec);
-    _decoderFrame   = av_frame_alloc();
-    int ret = avcodec_open2(_decoderContext, _decoderCodec, NULL);
-    av_init_packet(&_decoderPacket);
+int FFMPEGVideoDecoder::stop() {
+	return 0;
 }
 
-FFMpegAudioDecoder::~FFMpegAudioDecoder()
-{
-    avcodec_close(_decoderContext);
-    av_free(_decoderContext);
-    av_free(_decoderFrame);
-
-    _decoderContext = NULL;
-    _decoderFrame   = NULL;
+sp<MetaData> FFMPEGVideoDecoder::getFormat() {
+	return NULL;
 }
 
-bool FFMpegAudioDecoder::decode(const unsigned char* buffer, int size, unsigned char* outbuff, int&out_size, int& out_samples)
-{
-    int got_picture, len;
-    out_size = 0;
-    out_samples = 0;
+int FFMPEGVideoDecoder::read(MediaBuffer **buffer) {
+	*buffer = NULL;
+	int isFinished;
+	do {
+		MediaBuffer* source;
+		int ret = source_->read(&source);
+		if (ret < 0) {
+			LOGE("read error:%d", ret);
+			return ret;
+		}
 
-    _decoderPacket.data = (uint8_t*)buffer;
-    _decoderPacket.size = size;
+		AVPacket ffpkt;
+		av_init_packet(&ffpkt);
+		ffpkt.data = (uint8_t*)source->data();
+		ffpkt.size = source->size();
+		int ret1 = avcodec_decode_video2(decoderContext_, decoderFrame_, &isFinished, &ffpkt);
+	} while (isFinished == 0);
 
-    len = avcodec_decode_audio4(_decoderContext, _decoderFrame, &got_picture, &_decoderPacket);
-
-    if (got_picture)
-    {
-        //PRINT("decoded:%d samples. decoded size:%d", _decoderFrame->nb_samples, len);
-        //PRINT("line size 0  = %d", _decoderFrame->linesize[0]);
-        memcpy(outbuff, _decoderFrame->data[0], _decoderFrame->linesize[0]);
-        out_size = _decoderFrame->linesize[0];
-        out_samples = _decoderFrame->nb_samples;
-    }
-
-    return (got_picture > 0);
+	LOGI("decoded %dx%d", decoderFrame_->width, decoderFrame_->height);
+	int y_ls = decoderFrame_->linesize[0];
+	int u_ls = decoderFrame_->linesize[1];
+	int v_ls = decoderFrame_->linesize[2];
+	MediaBuffer* dest = new MediaBuffer((y_ls + u_ls + v_ls)*decoderFrame_->height);
+	const unsigned char* dst = dest->data();
+	int offset = 0;
+	memcpy((void*)dst, (void*)decoderFrame_->data[0], y_ls*decoderFrame_->height);
+	offset += y_ls*decoderFrame_->height;
+	memcpy((void*)&dst[offset], (void*)decoderFrame_->data[1], u_ls*decoderFrame_->height);
+	offset += u_ls*decoderFrame_->height;
+	memcpy((void*)&dst[offset], (void*)decoderFrame_->data[2], v_ls*decoderFrame_->height);
+	*buffer = dest;
+	return 0;
 }
 
 }

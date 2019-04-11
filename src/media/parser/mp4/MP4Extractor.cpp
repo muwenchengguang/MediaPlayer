@@ -130,7 +130,7 @@ void MP4Extractor::calc(const sp<Track>& track) {
             ret = track->findKeySample(i, &syncSampleIndex);
         }
         if (ret < 0) break;
-        LOGI("sample[%d] %lld-%lld ts:%u ", i, offset, size, timestamp);
+        //LOGI("sample[%d] %lld-%lld ts:%u ", i, offset, size, timestamp);
     }
 }
 
