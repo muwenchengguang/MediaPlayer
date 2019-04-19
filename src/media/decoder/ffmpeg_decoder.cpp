@@ -147,6 +147,7 @@ int FFMPEGVideoDecoder::read(MediaBuffer **buffer) {
 		av_init_packet(&ffpkt);
 		ffpkt.data = (uint8_t*)source->data();
 		ffpkt.size = source->size();
+		LOGI("fill buffer");
 		int ret1 = avcodec_decode_video2(decoderContext_, decoderFrame_, &isFinished, &ffpkt);
 	} while (isFinished == 0);
 

@@ -69,7 +69,9 @@ int MPEG4Source::read (MediaBuffer **buffer) {
     ssize_t reads = mDataSource->readAt(offset, (*buffer)->data() + dataOffset, size);
     if (reads != size) return ERROR_IO;
     // assemble with NAL unit start code
-    memcpy((*buffer)->data() + dataOffset, startCode, 4);
+    if (mSampleIndex > 0) {
+        memcpy((*buffer)->data() + dataOffset, startCode, 4);
+    }
     (*buffer)->setRangeOffset(0);
     (*buffer)->setRangeLength(dataSize);
     if (mSampleIndex == 0) {
