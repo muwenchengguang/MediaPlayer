@@ -8,7 +8,9 @@
 #include "MediaExtractor.h"
 #include "mp4/track.h"
 #include "media/decoder/ffmpeg_decoder.h"
+#include "display/Render.h"
 #include <unistd.h>
+#include <Player.h>
 
 using namespace peng;
 
@@ -129,28 +131,13 @@ void testPlay(char* filename) {
 		LOGE("open file failed");
 		return;
 	}
-	sp<DataSource> ds = new FileDataSource(fp);
-	sp<MediaExtractor> extractor = MediaExtractor::create(ds, NULL);
-	if (extractor.get() != NULL) {
-		LOGI("parsed done");
+	sp<Player> player = new Player();
+	player->setDataSource(fp);
+	player->start();
+	while (player->isPlaying()) {
+	    usleep(1000*1000);
 	}
-	size_t count = extractor->countTracks();
-	for (size_t i = 0; i < count; ++i) {
-		sp<MediaSource> track = extractor->getTrack(i);
-		if (track.get() != NULL) {
-			int codecType = Unknown;
-			sp<MetaData> format = track->getFormat();
-			format->findInt32(kKeyMIMEType, codecType);
-			MediaBuffer* buffer = NULL;
-			//sp<FFMPEGVideoDecoder> decoder = NULL;
-			if (codecType == AVC) {
-				//decoder = new FFMPEGVideoDecoder(codecType);
-			} else {
-				LOGW("ignore unsupported codec");
-				continue;
-			}
-		}
-	}
+	player->stop();
 }
 
 int main(int argc,char *argv[]) {
@@ -158,7 +145,7 @@ int main(int argc,char *argv[]) {
     LOGI("IN MAIN");
     //test_ds();
     //test_parser(argv[1]);
-    test_decoder(argv[1]);
+    testPlay(argv[1]);
 
     LOGI("OUT MAIN");
     return 0;
