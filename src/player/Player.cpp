@@ -12,13 +12,15 @@
 #include <log.h>
 #include <CodecDef.h>
 #include <media/decoder/ffmpeg_decoder.h>
+#include <GtkVideoRender.h>
 
 namespace peng {
 #define BUFFERING_COUNT_MAX (10)
 
 Player::Player()
         :mRender(NULL),
-         mStarted(false) {
+         mStarted(false),
+         mSurface(NULL) {
     // TODO Auto-generated constructor stub
     LOGI("constructed");
 }
@@ -47,13 +49,17 @@ void Player::setDataSource(FILE* fp) {
             format->findInt32(kKeyMIMEType, codecType);
             if (codecType == AVC) {
                 //mSources.push_back(new FFMPEGVideoDecoder(codecType, track));
-                mRender = new Render(new FFMPEGVideoDecoder(codecType, track));
+                mRender = new GtkVideoRender(new FFMPEGVideoDecoder(codecType, track), mSurface);
             } else {
                 LOGW("ignore unsupported codec");
                 continue;
             }
         }
     }
+}
+
+void Player::setSurface(GtkMainWnd* surface) {
+    mSurface = surface;
 }
 
 int Player::start() {

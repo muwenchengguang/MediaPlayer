@@ -12,6 +12,9 @@
 #include <unistd.h>
 #include <Player.h>
 
+#include <gtk/gtk.h>
+#include <wnd.h>
+
 using namespace peng;
 
 static void test_ds() {
@@ -140,13 +143,58 @@ void testPlay(char* filename) {
 	player->stop();
 }
 
+class ThreadProc: public SingleThread::ThreadProc {
+public:
+    ThreadProc() {
+    }
+    ~ThreadProc() {
+    }
+    virtual bool process(int id) {
+
+        while (gtk_events_pending())
+            gtk_main_iteration();
+        usleep(10*1000);
+        return true;
+    }
+
+private:
+};
+
+void play(char* filename, GtkMainWnd& wnd) {
+
+    DataSource::RegisterDefaultSniffers();
+    FILE* fp = fopen (filename, "rb");
+    if (fp <= 0) {
+        LOGE("open file failed");
+        return;
+    }
+    sp<Player> player = new Player();
+    player->setSurface(&wnd);
+    player->setDataSource(fp);
+    player->start();
+    while (player->isPlaying()) {
+        usleep(1000*1000);
+    }
+    player->stop();
+}
+
 int main(int argc,char *argv[]) {
+    gtk_init(&argc, &argv);
+    g_type_init();
+    g_thread_init(NULL);
+
+    SingleThread thread;
+    ThreadProc proc;
+    thread.registerThreadProc(proc);
+    thread.start();
+
+    GtkMainWnd wnd;
+
 
     LOGI("IN MAIN");
-    //test_ds();
-    //test_parser(argv[1]);
-    testPlay(argv[1]);
+    play(argv[1], wnd);
 
+    thread.stop();
     LOGI("OUT MAIN");
     return 0;
 }

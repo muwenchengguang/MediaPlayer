@@ -24,8 +24,12 @@ public:
     virtual int stop();
 
     bool isPlaying();
+    sp<MetaData> getFormat();
 
 protected:
+    virtual void render(MediaBuffer* buffer, sp<MetaData> meta) = 0;
+
+private:
     virtual bool process(int thread_id);
 
     bool decode();

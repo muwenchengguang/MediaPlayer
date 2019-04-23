@@ -6,6 +6,13 @@
 
 namespace peng {
 
+MetaData::MetaData(MetaData& meta) {
+    for (std::list<Item>::iterator it = meta.mItems.begin (); it != meta.mItems.end (); it++) {
+        Item item = *it;
+        mItems.push_back(item);
+    }
+}
+
 void MetaData::setCString(int key, std::string value) {
     for (std::list<Item>::iterator it = mItems.begin (); it != mItems.end (); it++) {
         Item item = *it;

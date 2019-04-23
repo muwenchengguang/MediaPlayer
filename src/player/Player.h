@@ -14,6 +14,7 @@
 #include <utils/Semaphore.h>
 #include <RefBase.h>
 #include <Render.h>
+#include <wnd.h>
 
 namespace peng {
 
@@ -28,11 +29,14 @@ public:
     virtual int stop();
     bool isPlaying();
 
+    void setSurface(GtkMainWnd* surface);
+
 protected:
 
 private:
     bool mStarted;
     sp<Render> mRender;
+    GtkMainWnd* mSurface;
 
 };
 

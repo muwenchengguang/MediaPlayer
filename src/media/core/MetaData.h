@@ -257,6 +257,7 @@ enum {
 class MetaData : public RefBase {
 public:
     MetaData() {};
+    MetaData(MetaData& meta);
     virtual ~MetaData() {};
 
     void setInt32(int key, int32_t value);

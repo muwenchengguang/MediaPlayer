@@ -5,7 +5,6 @@
 #include "log.h"
 #include <string.h>
 
-
 namespace peng {
 
 static void YUV2RGB(unsigned char* pYUV, unsigned char* pRGB) {
@@ -37,36 +36,7 @@ static void YUV2RGB(unsigned char* pYUV, unsigned char* pRGB) {
     pRGB[3] = 0xff;
 }
 
-void convertYUV2RGB(const unsigned char* yuv, int w, int h, unsigned char* out) {
-    int y_len = w*h;
-    int u_len = w*h/4;
-    int v_len = u_len;
-    const unsigned char* Y = yuv;
-    const unsigned char* U = Y + y_len;
-    const unsigned char* V = U + u_len;
-    const unsigned char* pY = Y, *pU = U, *pV = V;
-    unsigned char YUV[3] = {0};
-    for (int i = 0; i < h; i++) {
-        for (int j = 0; j < w; j++) {
-            YUV[0] = *pY;
-            YUV[1] = *pU;
-            YUV[2] = *pV;
-            YUV2RGB(YUV, out);
-            out += 4;
-            pY++;
-            if (j%2 == 1) {
-                pU++;
-                pV++;
-            }
-        }
-        if (i%2 == 1) {
-            pU = pU - w/2;
-            pV = pV - w/2;
-        }
-    }
-}
-
-void convertYUV2RGB(const unsigned char* y, int y_ls,
+static void copyFromYUV2RGB32(const unsigned char* y, int y_ls,
                     const unsigned char* u, int u_ls,
                     const unsigned char* v, int v_ls,
                     int w, int h,
@@ -92,7 +62,8 @@ void convertYUV2RGB(const unsigned char* y, int y_ls,
     }
 }
 
-FFMPEGVideoDecoder::FFMPEGVideoDecoder(int codec, const sp<MediaSource>& source) : source_(source) {
+FFMPEGVideoDecoder::FFMPEGVideoDecoder(int codec,const sp<MediaSource>& source)
+        : source_(source), mMetaData(new MetaData()), width_(0), height_(0) {
 	LOGI("FFMPEGVideoDecoder constructed");
     avcodec_register_all();
     if (codec == AVC)
@@ -129,7 +100,7 @@ int FFMPEGVideoDecoder::stop() {
 }
 
 sp<MetaData> FFMPEGVideoDecoder::getFormat() {
-	return NULL;
+	return mMetaData;
 }
 
 int FFMPEGVideoDecoder::read(MediaBuffer **buffer) {
@@ -151,19 +122,27 @@ int FFMPEGVideoDecoder::read(MediaBuffer **buffer) {
 		int ret1 = avcodec_decode_video2(decoderContext_, decoderFrame_, &isFinished, &ffpkt);
 	} while (isFinished == 0);
 
-	LOGI("decoded %dx%d", decoderFrame_->width, decoderFrame_->height);
 	int y_ls = decoderFrame_->linesize[0];
+	LOGI("decoded %dx%d", decoderFrame_->width, decoderFrame_->height);
+	if (width_ != y_ls) {
+	    width_ = y_ls;
+	    getFormat()->setInt32(kKeyWidth, width_);
+	}
+	if (height_ != decoderFrame_->height) {
+	    height_ = decoderFrame_->height;
+	    getFormat()->setInt32(kKeyHeight, height_);
+	}
+
 	int u_ls = decoderFrame_->linesize[1];
 	int v_ls = decoderFrame_->linesize[2];
-	MediaBuffer* dest = new MediaBuffer((y_ls + u_ls + v_ls)*decoderFrame_->height);
-	const unsigned char* dst = dest->data();
-	int offset = 0;
-	memcpy((void*)dst, (void*)decoderFrame_->data[0], y_ls*decoderFrame_->height);
-	offset += y_ls*decoderFrame_->height;
-	memcpy((void*)&dst[offset], (void*)decoderFrame_->data[1], u_ls*decoderFrame_->height);
-	offset += u_ls*decoderFrame_->height;
-	memcpy((void*)&dst[offset], (void*)decoderFrame_->data[2], v_ls*decoderFrame_->height);
+	LOGI("%d, %d, %d", y_ls, u_ls, v_ls);
+	MediaBuffer* dest = new MediaBuffer(width_*height_*4);
+	copyFromYUV2RGB32(decoderFrame_->data[0], decoderFrame_->linesize[0],
+	                   decoderFrame_->data[1], decoderFrame_->linesize[1],
+	                   decoderFrame_->data[2], decoderFrame_->linesize[2],
+	                   decoderFrame_->width, decoderFrame_->height, dest->data());
 	*buffer = dest;
+
 	return 0;
 }
 

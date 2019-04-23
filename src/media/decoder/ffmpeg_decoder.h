@@ -31,6 +31,9 @@ private:
     AVCodecContext* decoderContext_;
     sp<MediaSource> source_;
     AVFrame* decoderFrame_;
+    sp<MetaData> mMetaData;
+    int width_;
+    int height_;
 };
 
 }

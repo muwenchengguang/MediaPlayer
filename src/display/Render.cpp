@@ -23,8 +23,8 @@ Render::Render(const sp<MediaSource>& source)
          mDecodeThread(NULL),
          mRenderThread(NULL),
          mStarted(false),
-         mRenderSem(0),
          mFreeSem(BUFFERING_COUNT_MAX),
+         mRenderSem(0),
          mIsPlaying(false) {
     // TODO Auto-generated constructor stub
     LOGI("constructed");
@@ -33,6 +33,11 @@ Render::Render(const sp<MediaSource>& source)
 Render::~Render() {
     // TODO Auto-generated destructor stub
     LOGI("destroyed");
+}
+
+sp<MetaData> Render::getFormat() {
+    sp<MetaData> meta = new MetaData(*mSource->getFormat());
+    return meta;
 }
 
 bool Render::isPlaying() {
@@ -52,7 +57,6 @@ int Render::start() {
     if (mRenderThread == NULL) {
         mRenderThread = new SingleThread(RENDER_THREAD);
         mRenderThread->registerThreadProc(*this);
-
     }
     mRenderThread->start();
     mDecodeThread->start();
@@ -104,10 +108,11 @@ bool Render::render() {
     {
         MediaBuffer* buffer = mBuffersToRender.front();
         mBuffersToRender.pop_front();
-        //usleep(1000);
-        mFreeSem.post();
+        usleep(1000*33);
+        render(buffer, getFormat());
         LOGI("rendered a frame");
         delete buffer;
+        mFreeSem.post();
     }
     return mStarted;
 }
