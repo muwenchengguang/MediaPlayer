@@ -7,33 +7,12 @@
 
 namespace peng {
 
-#define MAIN_WND_WIDTH_DEFAULT (720)
-#define MAIN_WND_HEIGHT_DEFAULT (540)
+#define MAIN_WND_WIDTH_DEFAULT (640)
+#define MAIN_WND_HEIGHT_DEFAULT (480)
 #define DRAW_AREA_WIDTH_DEFAULT (MAIN_WND_WIDTH_DEFAULT)
 #define DRAW_AREA_HEIGHT_DEFAULT (MAIN_WND_HEIGHT_DEFAULT)
 
 const int PIXEL_SIZE = sizeof(unsigned int);
-
-
-static void zoom(const unsigned char* src, int sw, int sh, unsigned char* dst, int scale) {
-    for (int j = 0; j < sh; j++) {
-        int dw = sw*scale;
-        unsigned char* srcW = (unsigned char*)(src + j*sw*4);
-
-        for (int q = 0; q < scale; q++) {
-            unsigned char* dstW = dst + (j*scale*dw*4) + dw*4*q;
-            for (int i = 0; i < sw; i++) {
-                for (int p = 0; p < scale; p++) {
-                    dstW[i*4*scale + p*4] = srcW[i*4];
-                    dstW[i*4*scale + 1 + p*4] = srcW[i*4 + 1];
-                    dstW[i*4*scale + 2 + p*4] = srcW[i*4 + 2];
-                    dstW[i*4*scale + 3 + p*4] = srcW[i*4 + 3];
-                }
-            }
-        }
-
-    }
-}
 
 static void rotate45(const unsigned char* src, int sw, int sh, unsigned char* dst) {
     for (int j = 0; j < sh; j++) {
@@ -212,29 +191,33 @@ void GtkDrawArea::OnRedraw() {
     gdk_threads_leave();
 }
 
+void scale(const unsigned char* src, int sw, int sh, unsigned char* dst, int dw, int dh) {
+    float pixelW = 1.0f * dw / sw;
+    float pixelH = 1.0f * dh / sh;
+
+    unsigned int* d = (unsigned int*)dst;
+    const unsigned int* s = (const unsigned int*)src;
+
+    for (int r = 0; r < sh; r ++) {
+        for (int c = 0; c < sw; c ++) {
+            // area
+            // r * pixelH ~ (r + 1) * pixelH, c * pixelW ~ (c + 1) * pixelW
+
+            for (int rr = r * pixelH; rr < (r + 1) * pixelH; rr++) {
+                for (int cc = c * pixelW; cc < (c + 1) * pixelW; cc++) {
+                    d[rr * dw + cc] = s[r * sw + c];
+                }
+            }
+
+        }
+    }
+}
+
 
 void GtkDrawArea::DrawPixBuf(const unsigned char* pixbuf, int width, int height) {
     assert(draw_area_);
-    float width_scale;
-    float height_scale;
-
-    /*const unsigned int* image = reinterpret_cast<const unsigned int*>(pixbuf);
-    width_scale = 1.0f * width_ / width;
-    height_scale = 1.0f * height_ / height;
-
-    unsigned int* scaled = (unsigned int*)draw_buffer_;
-
-    for (int r = 0; r < height; r ++) {
-        int r_scaled = r * height_scale;
-        for (int c = 0; c < width; c ++) {
-            int c_scaled = c * width_scale;
-            if (r_scaled > height_ || c_scaled > width_)
-                continue;
-
-            scaled[c_scaled + r_scaled * width_] = image[c + r * width];
-        }
-    }*/
-    gdk_draw_rgb_32_image(draw_area_->window, draw_area_->style->fg_gc[GTK_STATE_NORMAL],  0,  0,  width_,  height_, GDK_RGB_DITHER_MAX,  pixbuf,  width_ * PIXEL_SIZE);
+    scale(pixbuf, width, height, draw_buffer_, width_, height_);
+    gdk_draw_rgb_32_image(draw_area_->window, draw_area_->style->fg_gc[GTK_STATE_NORMAL],  0,  0,  width_,  height_, GDK_RGB_DITHER_MAX,  draw_buffer_,  width_ * PIXEL_SIZE);
 }
 
 }
