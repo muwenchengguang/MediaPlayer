@@ -68,6 +68,8 @@ FFMPEGVideoDecoder::FFMPEGVideoDecoder(int codec,const sp<MediaSource>& source)
     avcodec_register_all();
     if (codec == AVC)
         decoderCodec_ = avcodec_find_decoder(AV_CODEC_ID_H264);
+    else if (codec == HEVC)
+        decoderCodec_ = avcodec_find_decoder(AV_CODEC_ID_HEVC);
     else if (codec == MPEG4)
         decoderCodec_ = avcodec_find_decoder(AV_CODEC_ID_MPEG4);
     else if (codec == MPEG1)
@@ -106,8 +108,8 @@ sp<MetaData> FFMPEGVideoDecoder::getFormat() {
 int FFMPEGVideoDecoder::read(MediaBuffer **buffer) {
 	*buffer = NULL;
 	int isFinished;
+	MediaBuffer* source;
 	do {
-		MediaBuffer* source;
 		int ret = source_->read(&source);
 		if (ret < 0) {
 			LOGE("read error:%d", ret);
@@ -118,25 +120,27 @@ int FFMPEGVideoDecoder::read(MediaBuffer **buffer) {
 		av_init_packet(&ffpkt);
 		ffpkt.data = (uint8_t*)source->data();
 		ffpkt.size = source->size();
-		LOGI("fill buffer");
+		//LOGI("fill buffer");
 		int ret1 = avcodec_decode_video2(decoderContext_, decoderFrame_, &isFinished, &ffpkt);
 	} while (isFinished == 0);
 
-	int y_ls = decoderFrame_->linesize[0];
-	LOGI("decoded %dx%d", decoderFrame_->width, decoderFrame_->height);
-	if (width_ != y_ls) {
-	    width_ = y_ls;
+	//LOGI("decoded %dx%d", decoderFrame_->width, decoderFrame_->height);
+	if (width_ != decoderFrame_->width) {
+	    width_ = decoderFrame_->width;
 	    getFormat()->setInt32(kKeyWidth, width_);
 	}
 	if (height_ != decoderFrame_->height) {
 	    height_ = decoderFrame_->height;
 	    getFormat()->setInt32(kKeyHeight, height_);
 	}
+	source->getMeta()->setInt32(kKeyWidth, width_);
+	source->getMeta()->setInt32(kKeyHeight, height_);
 
+	int y_ls = decoderFrame_->linesize[0];
 	int u_ls = decoderFrame_->linesize[1];
 	int v_ls = decoderFrame_->linesize[2];
-	LOGI("%d, %d, %d", y_ls, u_ls, v_ls);
-	MediaBuffer* dest = new MediaBuffer(width_*height_*4);
+	//LOGI("%d, %d, %d", y_ls, u_ls, v_ls);
+	MediaBuffer* dest = new MediaBuffer(width_*height_*4, source->getMeta());
 	copyFromYUV2RGB32(decoderFrame_->data[0], decoderFrame_->linesize[0],
 	                   decoderFrame_->data[1], decoderFrame_->linesize[1],
 	                   decoderFrame_->data[2], decoderFrame_->linesize[2],

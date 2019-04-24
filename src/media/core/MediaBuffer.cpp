@@ -5,18 +5,41 @@
 #include <string.h>
 #include <stdint.h>
 #include "MediaBuffer.h"
+#include <MetaData.h>
 
 namespace peng {
 
-MediaBuffer::MediaBuffer () : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(0) {
-
+MediaBuffer::MediaBuffer ()
+    : mBuffer(NULL), mSize(0), mRangeOffset(0), mRangeLength(0), mMeta(new MetaData()) {
 }
 
-MediaBuffer::MediaBuffer (unsigned char *buffer, int size) : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(size) {
+MediaBuffer::MediaBuffer (unsigned char *buffer, int size)
+    : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(size), mMeta(new MetaData()) {
     setData(buffer, size);
 }
 
-MediaBuffer::MediaBuffer (int size) : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(size) {
+MediaBuffer::MediaBuffer (int size)
+    : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(size), mMeta(new MetaData()) {
+    if (size > 0) {
+        mBuffer = new uint8_t[size];
+        mSize = size;
+    } else {
+        mBuffer = NULL;
+        mSize = 0;
+    }
+}
+
+MediaBuffer::MediaBuffer (const sp<MetaData> & meta)
+    : mBuffer(NULL), mSize(0), mRangeOffset(0), mRangeLength(0), mMeta(meta) {
+}
+
+MediaBuffer::MediaBuffer (unsigned char *buffer, int size, const sp<MetaData> & meta)
+    : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(size), mMeta(meta) {
+    setData(buffer, size);
+}
+
+MediaBuffer::MediaBuffer (int size, const sp<MetaData> & meta)
+    : mBuffer(NULL), mRangeOffset(0), mRangeLength(0), mSize(size), mMeta(meta) {
     if (size > 0) {
         mBuffer = new uint8_t[size];
         mSize = size;
@@ -62,6 +85,10 @@ int MediaBuffer::offset () {
 
 int MediaBuffer::size () {
     return mRangeLength;
+}
+
+sp<MetaData> MediaBuffer::getMeta() {
+    return mMeta;
 }
 
 

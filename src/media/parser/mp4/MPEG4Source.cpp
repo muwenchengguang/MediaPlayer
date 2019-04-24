@@ -45,6 +45,9 @@ int MPEG4Source::read (MediaBuffer **buffer) {
 
 	ret = mTrack->findSample(mSampleIndex, &offset, &size);
 	if (ret < 0) return ret;
+	uint32_t timestamp;
+	ret = mTrack->findSampleTimeStamp(mSampleIndex, &timestamp);
+	if (ret < 0) return ret;
 	int dataSize;
 	int dataOffset = 0;
 
@@ -74,6 +77,8 @@ int MPEG4Source::read (MediaBuffer **buffer) {
     }
     (*buffer)->setRangeOffset(0);
     (*buffer)->setRangeLength(dataSize);
+    //LOGI("timestamp:%u", timestamp);
+    (*buffer)->getMeta()->setInt64(kKeyTime, timestamp);
     if (mSampleIndex == 0) {
     	/*FILE * fp = fopen("dump.264", "wb");
     	fwrite((*buffer)->data(), (*buffer)->size(), 1, fp);

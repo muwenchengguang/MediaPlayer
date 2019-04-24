@@ -5,12 +5,18 @@
 #ifndef MPLAYER_MEDIABUFFER_H
 #define MPLAYER_MEDIABUFFER_H
 
-#include "RefBase.h"
+#include <RefBase.h>
+
 
 namespace peng {
 
+class MetaData;
+
 class MediaBuffer : public RefBase {
 public:
+    MediaBuffer(unsigned char* buffer, int size, const sp<MetaData> & meta);
+    MediaBuffer(int size, const sp<MetaData> & meta);
+    MediaBuffer(const sp<MetaData> & meta);
     MediaBuffer(unsigned char* buffer, int size);
     MediaBuffer(int size);
     MediaBuffer();
@@ -30,11 +36,14 @@ public:
         return mSize;
     }
 
+    sp<MetaData> getMeta();
+
 private:
     unsigned char* mBuffer;
     int mSize;
     int mRangeOffset;
     int mRangeLength;
+    sp<MetaData> mMeta;
 
 };
 

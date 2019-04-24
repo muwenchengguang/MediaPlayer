@@ -34,7 +34,15 @@ int Track::findSample (uint32_t sampleIndex, off64_t *offset, uint64_t *size) {
 int Track::findSampleTimeStamp (uint32_t sampleIndex, uint32_t *timestamp) {
     sp<STBLChunk> stbl = findSTBL();
     if (stbl.get() != NULL) {
-        return stbl->findSampleTimeStamp(sampleIndex, timestamp);
+        int64_t timeScale;
+        uint64_t temp = 0;
+        mMeta->findInt64(kKeyTimeScale, timeScale);
+
+        int ret = stbl->findSampleTimeStamp(sampleIndex, timestamp);
+        temp = *timestamp;
+        temp = (temp * 1000000) / timeScale;
+        *timestamp = temp;
+        return ret;
     }
     return ERROR_MALFORMED;
 }

@@ -161,14 +161,14 @@ void GtkMainWnd::draw(const unsigned char* pixbuf, int width, int height) {
 
 unsigned char g_buff[1920*1080*4];
 
-void GtkMainWnd::render(MediaBuffer* buffer, sp<MetaData> metadata) {
+void GtkMainWnd::render(MediaBuffer* buffer) {
     int32_t width;
     int32_t height;
-    int ret = metadata->findInt32(kKeyWidth, width);
+    int ret = buffer->getMeta()->findInt32(kKeyWidth, width);
     assert(ret == 0);
-    ret = metadata->findInt32(kKeyHeight, height);
+    ret = buffer->getMeta()->findInt32(kKeyHeight, height);
     assert(ret == 0);
-    LOGI("w:%d, h:%d", width, height);
+    //LOGI("w:%d, h:%d", width, height);
     memcpy(g_buff, buffer->data(), width*height*4);
     draw(g_buff, width, height);
 }

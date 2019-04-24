@@ -27,7 +27,7 @@ public:
     sp<MetaData> getFormat();
 
 protected:
-    virtual void render(MediaBuffer* buffer, sp<MetaData> meta) = 0;
+    virtual void render(MediaBuffer* buffer) = 0;
 
 private:
     virtual bool process(int thread_id);
@@ -46,6 +46,8 @@ private:
     Semaphore mFreeSem;
     Semaphore mRenderSem;
     bool mIsPlaying;
+    int64_t mLastPlayingTimeStampUS;
+    uint32_t mLastPlayingTimeMs;
 };
 
 } /* namespace peng */

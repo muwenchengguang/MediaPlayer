@@ -11,6 +11,7 @@
 enum CodecID {
 	Unknown = -1,
 	AVC,
+	HEVC,
 	MPEG4,
 	MPEG1,
 	MPEGA,

@@ -36,7 +36,7 @@ public:
     GtkMainWnd();
     ~GtkMainWnd();
     
-    void render(MediaBuffer* buffer, sp<MetaData> metadata);
+    void render(MediaBuffer* buffer);
 
 protected:
     void draw(const unsigned char* pixbuf, int width, int height);

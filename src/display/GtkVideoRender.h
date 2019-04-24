@@ -19,7 +19,7 @@ public:
     virtual ~GtkVideoRender();
 
 private:
-    virtual void render(MediaBuffer* buffer, sp<MetaData> meta);
+    virtual void render(MediaBuffer* buffer);
 
     GtkMainWnd* mSurface;
 

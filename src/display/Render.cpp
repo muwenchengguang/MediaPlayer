@@ -10,6 +10,7 @@
 #include <unistd.h>
 #define LOG_TAG "Render"
 #include <log.h>
+#include <sys/time.h>
 
 namespace peng {
 
@@ -18,6 +19,13 @@ namespace peng {
 #define DECODE_THREAD (1)
 #define RENDER_THREAD (2)
 
+static uint32_t getCurrentTimeMS() {
+    struct timeval tt;
+    gettimeofday(&tt,NULL);
+    return (tt.tv_sec*1000 + tt.tv_usec/1000);
+}
+
+
 Render::Render(const sp<MediaSource>& source)
         :mSource(source),
          mDecodeThread(NULL),
@@ -25,7 +33,9 @@ Render::Render(const sp<MediaSource>& source)
          mStarted(false),
          mFreeSem(BUFFERING_COUNT_MAX),
          mRenderSem(0),
-         mIsPlaying(false) {
+         mIsPlaying(false),
+         mLastPlayingTimeStampUS(0),
+         mLastPlayingTimeMs(0) {
     // TODO Auto-generated constructor stub
     LOGI("constructed");
 }
@@ -91,7 +101,7 @@ bool Render::decode() {
     MediaBuffer* buffer;
     int ret = mSource->read(&buffer);
     if (ret == 0) {
-        LOGI("decoded a frame");
+        //LOGI("decoded a frame");
         mBuffersToRender.push_back(buffer);
         mRenderSem.post();
     } else {
@@ -101,16 +111,40 @@ bool Render::decode() {
     return mStarted && (ret == 0);
 }
 
+int64_t beginTime;
+
 bool Render::render() {
-    LOGI("render thread");
+    //LOGI("render thread");
     mRenderSem.wait();
     if (mBuffersToRender.size() > 0)
     {
         MediaBuffer* buffer = mBuffersToRender.front();
+        int64_t timestampUS;
+
+        buffer->getMeta()->findInt64(kKeyTime, timestampUS);
+        uint32_t nowTime = getCurrentTimeMS();
+
+        if (mLastPlayingTimeMs == 0 || mLastPlayingTimeStampUS == 0) {
+            beginTime = nowTime;
+        }  else {
+            uint32_t timeDiff = nowTime - mLastPlayingTimeMs;
+            uint32_t time2Play = (timestampUS - mLastPlayingTimeStampUS)/1000;
+            bool isEarly = timeDiff < time2Play;
+            if (isEarly) {
+                usleep(1000*(time2Play - timeDiff));
+                mRenderSem.post();
+                return mStarted;
+            }
+        }
+
+        int64_t diff = nowTime - beginTime;
+        mLastPlayingTimeMs = nowTime;
+        mLastPlayingTimeStampUS = timestampUS;
         mBuffersToRender.pop_front();
-        usleep(1000*33);
-        render(buffer, getFormat());
-        LOGI("rendered a frame");
+        //LOGI("[%d.%d]render", diff/1000, diff%1000);
+        render(buffer);
+        //LOGI("rendered a frame");
+
         delete buffer;
         mFreeSem.post();
     }

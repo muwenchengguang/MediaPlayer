@@ -47,11 +47,11 @@ void Player::setDataSource(FILE* fp) {
             int codecType = Unknown;
             sp<MetaData> format = track->getFormat();
             format->findInt32(kKeyMIMEType, codecType);
-            if (codecType == AVC) {
+            if (codecType == AVC || codecType == HEVC) {
                 //mSources.push_back(new FFMPEGVideoDecoder(codecType, track));
                 mRender = new GtkVideoRender(new FFMPEGVideoDecoder(codecType, track), mSurface);
             } else {
-                LOGW("ignore unsupported codec");
+                LOGW("ignore unsupported codec %d", codecType);
                 continue;
             }
         }

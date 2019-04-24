@@ -159,6 +159,7 @@ private:
         //LOGI("timeScale:%lld, duration:%lld dur:%lld", timeScale, duration, val);
         if (mMeta.get() != NULL) {
             mMeta->setInt64(kKeyDuration, val);
+            mMeta->setInt64(kKeyTimeScale, timeScale);
         }
         return 0;
     }
@@ -233,6 +234,34 @@ private:
 
 };
 
+class HEVCChunk : public Chunk {
+public:
+    HEVCChunk(const sp <DataSource> &source, const sp <MetaData> &meta, std::string fourCC, off64_t offset, uint64_t size, int depth)
+            : Chunk(source, meta, fourCC, offset, size, depth) {}
+    virtual ~HEVCChunk (){}
+
+private:
+    virtual int parse() {
+        off64_t data_offset = mOffset; // pass it to data section
+        off64_t chunk_data_size = mSize;
+        sp<MediaBuffer> buffer = new MediaBuffer(chunk_data_size);
+        if (mDataSource->readAt(
+                data_offset, buffer->data(), chunk_data_size) < chunk_data_size) {
+            return ERROR_IO;
+        }
+        buffer->setRangeLength(chunk_data_size);
+
+        if (mMeta.get() != NULL) {
+            LOGI("HEVC data:%lld", chunk_data_size);
+            mMeta->setData(kKeyAVCC, buffer);
+        }
+        mMeta->setInt32(kKeyMIMEType, HEVC);
+
+        return 0;
+    }
+
+};
+
 
 sp<Chunk> Chunk::create (const sp <DataSource> &source, const sp <MetaData> &meta, std::string fourCC, off64_t offset, uint64_t size, int depth) {
     BoxType boxType = fourccType(fourCC);
@@ -259,6 +288,9 @@ sp<Chunk> Chunk::create (const sp <DataSource> &source, const sp <MetaData> &met
         return new ESDSChunk(source, meta, fourCC, offset, size, depth);
     } else if (boxType == BOX_AVCC) {
         return new AVCCChunk(source, meta, fourCC, offset, size, depth);
+    } else if (boxType == BOX_HVCC) {
+        LOGI("BOX_HVCC");
+        return new HEVCChunk(source, meta, fourCC, offset, size, depth);
     }
     return NULL;
 }

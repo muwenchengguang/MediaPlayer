@@ -20,11 +20,11 @@ GtkVideoRender::~GtkVideoRender() {
     // TODO Auto-generated destructor stub
 }
 
-void GtkVideoRender::render(MediaBuffer* buffer, sp<MetaData> meta) {
+void GtkVideoRender::render(MediaBuffer* buffer) {
 
     if (mSurface != NULL) {
-        LOGI("render");
-        mSurface->render(buffer, meta);
+        //LOGI("render");
+        mSurface->render(buffer);
     }
 }
 

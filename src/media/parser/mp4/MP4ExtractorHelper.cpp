@@ -224,7 +224,7 @@ static const FourccRefItem sFourccRefItem[] {
         {BOX_MP4A, "mp4a"},    {BOX_MP4V, "mp4v"},    {BOX_ESDS, "esds"},
         {BOX_STTS, "stts"},    {BOX_STSS, "stss"},    {BOX_CTTS, "ctts"},
         {BOX_STSC, "stsc"},    {BOX_STSZ, "stsz"},    {BOX_STCO, "stco"},
-        {BOX_AVCC, "avcC"},    {BOX_HVCC, "hvcC"},
+        {BOX_AVCC, "avcC"},    {BOX_HVCC, "hvcC"}
 };
 
 
